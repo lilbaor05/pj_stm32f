@@ -1,0 +1,133 @@
+#include "S32K144.h"
+
+#define BLUE_LED_PIN    (15)
+
+/* =========================================================================
+ * KHAI BÁO NGUYÊN MẪU HÀM (FUNCTION PROTOTYPES)
+ * ========================================================================= */
+// Tầng Application
+void delay_ms(int ms);
+void blink_LED(int pin, int cycle_ms);
+
+// Tầng Driver
+typedef enum {
+    GPIO_INPUT = 0,
+    GPIO_OUTPUT = 1
+} GPIO_Direction_t;
+
+void GPIO_initPin(int pin, GPIO_Direction_t direction);
+void GPIO_setPin(int pin);
+void GPIO_clearPin(int pin);
+
+// Tầng HAL (Hardware Access Layer)
+void Hw_PORTD_enableClock(void);
+void Hw_PORTD_setMuxGpio(int pin);
+void Hw_PORTD_setPinDirection(int pin, GPIO_Direction_t direction);
+void Hw_PORTD_writePinHigh(int pin);
+void Hw_PORTD_writePinLow(int pin);
+
+/* =========================================================================
+ * 1. TẦNG APPLICATION (ỨNG DỤNG)
+ * ========================================================================= */
+void delay_ms(int ms)
+{
+    /* Vòng lặp trễ phần mềm xấp xỉ */
+    volatile int count = ms * 8000;
+    while (count > 0)
+    {
+        count--;
+    }
+}
+
+void blink_LED(int pin, int cycle_ms)
+{
+    // Bật LED (Active-Low: kéo xuống mức 0 để sáng)
+    GPIO_clearPin(pin);
+    delay_ms(cycle_ms / 2);
+
+    // Tắt LED (kéo lên mức 1 để tắt)
+    GPIO_setPin(pin);
+    delay_ms(cycle_ms / 2);
+}
+
+int main(void)
+{
+    /* B1, B2, B3: Khởi tạo chân PTD15 làm GPIO Output */
+    GPIO_initPin(BLUE_LED_PIN, GPIO_OUTPUT);
+
+    /* Trạng thái ban đầu: Tắt LED */
+    GPIO_setPin(BLUE_LED_PIN);
+
+    /* B4: Chớp tắt LED với chu kỳ 3000 ms (1.5s sáng, 1.5s tắt) */
+    while (1)
+    {
+        blink_LED(BLUE_LED_PIN, 3000);
+    }
+
+    return 0;
+}
+
+/* =========================================================================
+ * 2. TẦNG DRIVER (GPIO DRIVER)
+ * ========================================================================= */
+void GPIO_initPin(int pin, GPIO_Direction_t direction)
+{
+    // Bước 1: Cấp clock cho PORTD qua ngoại vi PCC
+    Hw_PORTD_enableClock();
+
+    // Bước 2: Cấu hình Multiplexing cho chân làm GPIO (MUX = 1)
+    Hw_PORTD_setMuxGpio(pin);
+
+    // Bước 3: Cấu hình chiều Output/Input trên thanh ghi PDDR
+    Hw_PORTD_setPinDirection(pin, direction);
+}
+
+void GPIO_setPin(int pin)
+{
+    Hw_PORTD_writePinHigh(pin);
+}
+
+void GPIO_clearPin(int pin)
+{
+    Hw_PORTD_writePinLow(pin);
+}
+
+/* =========================================================================
+ * 3. TẦNG HAL (GIAO TIẾP THANH GHI PHẦN CỨNG S32K144)
+ * ========================================================================= */
+void Hw_PORTD_enableClock(void)
+{
+    // Bước 1: Bật CGC (Clock Gate Control) cho khối PORT D
+    IP_PCC->PCCn[PCC_PORTD_INDEX] |= PCC_PCCn_CGC_MASK;
+}
+
+void Hw_PORTD_setMuxGpio(int pin)
+{
+    // Bước 2: Chọn MUX = 001 (chế độ GPIO) trên thanh ghi PCR của chân tương ứng
+    IP_PORTD->PCR[pin] = PORT_PCR_MUX(1);
+}
+
+void Hw_PORTD_setPinDirection(int pin, GPIO_Direction_t direction)
+{
+    // Bước 3: Ghi vào thanh ghi PDDR để thiết lập Input (0) hoặc Output (1)
+    if (direction == GPIO_OUTPUT)
+    {
+        IP_PTD->PDDR |= (1 << pin);
+    }
+    else
+    {
+        IP_PTD->PDDR &= ~(1 << pin);
+    }
+}
+
+void Hw_PORTD_writePinHigh(int pin)
+{
+    // Xuất mức logic 1 ra chân thông qua thanh ghi PDOR (hoặc PSOR)
+    IP_PTD->PDOR |= (1 << pin);
+}
+
+void Hw_PORTD_writePinLow(int pin)
+{
+    // Xuất mức logic 0 ra chân thông qua thanh ghi PDOR (hoặc PCOR)
+    IP_PTD->PDOR &= ~(1 << pin);
+}

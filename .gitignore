@@ -1,0 +1,26 @@
+# Build output directories
+build/
+Debug/
+Release/
+bin/
+obj/
+
+# Compiler and Linker artifacts
+*.o
+*.obj
+*.d
+*.crf
+*.axf
+*.map
+*.lst
+*.build_log.htm
+*.dep
+*.tmp
+
+# OS & Editor generated files
+.vscode/
+*.swp
+*.bak
+*~
+desktop.ini
+Thumbs.db

@@ -1,0 +1,3 @@
+[submodule "GrapeRepo"]
+	path = GrapeRepo
+	url = https://github.com/grapetechvn/Grapini32_Grape32Unleashed_Boards.git
